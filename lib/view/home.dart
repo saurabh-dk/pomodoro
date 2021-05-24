@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pomodoro/controller/Storage.dart';
 import 'package:pomodoro/model/Task.dart';
-import 'package:pomodoro/view/deleteTask.dart';
-import 'package:pomodoro/view/addTask.dart';
+import 'package:pomodoro/view/custom_widgets/task_widget.dart';
 import 'package:pomodoro/view/sprint.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -39,10 +38,17 @@ class _HomeScreenState extends State<HomeScreen> {
         centerTitle: true,
       ),
       body: Container(
-        padding: EdgeInsets.all(10),
         child: (taskList != null && taskList.isNotEmpty)
-            ? ListView(
-                children: _cards(),
+            ? ListView.builder(
+                padding: EdgeInsets.all(10),
+                itemCount: taskList.length,
+                itemBuilder: (BuildContext context, int index) {
+                  return taskWidget(
+                      task: taskList.elementAt(index),
+                      onClick: () => {_gotoTask(taskList.elementAt(index))},
+                      onDeleteClick: () =>
+                          {_gotoDeleteTask(taskList.elementAt(index))});
+                },
               )
             : _noTasks(),
       ),
@@ -59,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         },
         label: Text('Add Task'),
-        tooltip: 'Increment',
+        tooltip: 'Add Task',
         icon: Icon(Icons.add),
       ),
     );
@@ -83,79 +89,60 @@ class _HomeScreenState extends State<HomeScreen> {
     ));
   }
 
-  List<Widget> _cards() {
-    return taskList
-        .map((task) => Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  GestureDetector(
-                    onLongPress: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AddTaskForm(oldTask: task),
-                          )).then((value) {
-                        setState(() {
-                          getData();
-                        });
-                      });
-                    },
-                    onTap: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => SprintScreen(task: task),
-                          )).then((value) {
-                        setState(() {
-                          getData();
-                        });
-                      });
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(color: Colors.white,
-                          // borderRadius: BorderRadius.circular(40),
-                          boxShadow: [
-                            BoxShadow(),
-                            //   BoxShadow(offset: Offset(20, 20), color: Colors.yellow),
-                          ]),
-                      margin: EdgeInsets.all(5),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          Text(
-                            task.name,
-                            style: TextStyle(fontSize: 16, color: Colors.black),
-                          ),
-                          Text(
-                            task.workDuration.toString(),
-                            style: TextStyle(fontSize: 16, color: Colors.black),
-                          ),
-                          Text(
-                            task.breakDuration.toString(),
-                            style: TextStyle(fontSize: 16, color: Colors.black),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete),
-                            color: Colors.grey,
-                            //size: 24.0,
-                            onPressed: () {
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        DeleteTaskScreen(task: task),
-                                  )).then((value) {
-                                setState(() {
-                                  getData();
-                                });
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                ]))
-        .toList();
+  _gotoTask(Task task) {
+    Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SprintScreen(task: task),
+        )).then((value) {
+      setState(() {
+        getData();
+      });
+    });
+  }
+
+  _gotoDeleteTask(Task task) {
+    showAlertDialog(context, task);
+  }
+
+  // Method to build and show alert box.
+  showAlertDialog(BuildContext context, Task task) async {
+    // Create OK button
+    Widget yesButton = TextButton(
+      child: Text("Yes"),
+      onPressed: () async {
+        bool res = await Storage().deleteTask(task);
+        if (res) {
+          Navigator.of(context).pop();
+          setState(() {
+            getData();
+          });
+        }
+      },
+    );
+
+    Widget noButton = TextButton(
+      child: Text("No"),
+      onPressed: () async {
+        Navigator.of(context).pop();
+      },
+    );
+
+    final String content = "Are you sure you want to delete " + task.name + "?";
+
+    // Create AlertDialog
+    AlertDialog alert = AlertDialog(
+      title: Text("Delete Task"),
+      content: Text(content),
+      actions: [noButton, yesButton],
+    );
+
+    // show the dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return alert;
+      },
+    );
   }
 }
